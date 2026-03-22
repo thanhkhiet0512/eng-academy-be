@@ -1,0 +1,142 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+generator clientFrontend {
+  provider = "prisma-client-js"
+  output   = "/Users/mac/Documents/code/eng-academy/frontend/node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  TEACHER
+  STUDENT
+  PARENT
+}
+
+model User {
+  id                       String   @id @default(uuid())
+  email                    String   @unique
+  passwordHash             String   @map("password_hash")
+  name                     String
+  role                     UserRole @default(TEACHER)
+  lastWorkingClassId       String?  @map("last_working_class_id")
+  myClassesDetailClassId   String?  @map("my_classes_detail_class_id")
+  createdAt                DateTime @default(now()) @map("created_at")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+
+  classes Class[]
+
+  @@map("users")
+}
+
+model Class {
+  id             String   @id
+  name           String
+  gradeLevel     String   @map("grade_level")
+  code           String?
+  classCode      String?  @map("class_code")
+  teacherId      String   @map("teacher_id")
+  teacherKeyHash String?  @map("teacher_key_hash")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  teacher   User             @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  students  Student[]
+  lessons   Lesson[]
+  terms     VocabularyTerm[]
+  attempts  Attempt[]
+  attendance Attendance[]
+
+  @@index([teacherId])
+  @@map("classes")
+}
+
+model Student {
+  id          String    @id
+  classId     String    @map("class_id")
+  name        String
+  code        String?
+  dateOfBirth DateTime? @map("date_of_birth")
+  parentName  String?   @map("parent_name")
+  parentPhone String?   @map("parent_phone")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  class      Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  attempts   Attempt[]
+  attendance Attendance[]
+
+  @@index([classId])
+  @@map("students")
+}
+
+model VocabularyTerm {
+  id               String   @id @default(uuid())
+  classId          String   @map("class_id")
+  wordEn           String   @map("word_en")
+  wordVi           String   @map("word_vi")
+  imageUrl         String?  @map("image_url")
+  audioUrl         String?  @map("audio_url")
+  exampleSentence  String?  @map("example_sentence")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  class Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@index([classId])
+  @@map("terms")
+}
+
+model Lesson {
+  id            String   @id @default(uuid())
+  classId       String   @map("class_id")
+  unitTitle     String   @map("unit_title")
+  topic         String
+  coverImageUrl String?  @map("cover_image_url")
+  termIds       String[] @default([]) @map("term_ids")
+  questions     Json
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  class    Class     @relation(fields: [classId], references: [id], onDelete: Cascade)
+  attempts Attempt[]
+
+  @@index([classId])
+  @@map("lessons")
+}
+
+model Attempt {
+  id        String   @id @default(uuid())
+  studentId String   @map("student_id")
+  classId   String   @map("class_id")
+  lessonId  String   @map("lesson_id")
+  score     Int
+  total     Int
+  createdAt DateTime @default(now()) @map("created_at")
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  lesson  Lesson  @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([classId])
+  @@index([lessonId])
+  @@map("attempts")
+}
+
+model Attendance {
+  id        String   @id @default(uuid())
+  classId   String   @map("class_id")
+  date      String
+  studentId String   @map("student_id")
+  present   Boolean
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, date, studentId], name: "attendance_class_date_student")
+  @@map("attendance")
+}
