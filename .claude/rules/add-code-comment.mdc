@@ -1,0 +1,125 @@
+---
+alwaysApply: true
+---
+
+Add comments to the provided code to explain its functionality and logic.
+
+# Steps
+
+1. **Identify Functional Blocks**: Break down the code into logical sections or units of functionality.
+2. **Explain Functionality**: For each functional block, provide a concise explanation of what it does.
+3. **Document Logic**: Explain complex logic or calculations when necessary. Describe what the code is doing, why it is doing it, and how it achieves its purpose.
+4. **Clarify Variables and Functions**: Define the purpose of variables and functions that might not be self-explanatory based on their names.
+5. **Use Clear Language**: Write comments in a clear, concise, and simple manner.
+6. **Placement of Comments**: Place comments above lines or blocks of code rather than at the end of lines to avoid clutter and enhance readability.
+
+# Output Format
+
+Provide the code with added comments in a clear format. Comments should precede the relevant sections or lines of code.
+
+# Examples
+
+## Before:
+
+```python
+def add_numbers(a, b):
+    return a + b
+```
+
+## After:
+
+```python
+# Function `add_numbers` takes two arguments, `a` and `b`
+# It returns the sum of these two numbers
+
+def add_numbers(a, b):
+    return a + b
+```
+
+---
+
+## More NestJS Examples
+
+### Example 1: Controller Method
+
+```typescript
+// `getUser` is an endpoint method in a NestJS controller
+// It receives a user id as a URL parameter and returns information about that user
+
+@Get(':id')
+getUser(@Param('id') id: string): Promise<User> {
+    // Calls the UserService to retrieve a user by their id
+    return this.userService.findById(id);
+}
+```
+
+### Example 2: Use Case Method (Hexagonal Architecture)
+
+```typescript
+// Use case for creating a new customer
+// Orchestrates business logic: validation, password hashing, customer creation
+// Uses CustomerRepositoryPort (adapter layer) for data access
+
+export class CreateCustomerUseCase {
+  constructor(private readonly customerRepository: CustomerRepositoryPort) {}
+
+  async execute(createDto: CreateCustomerDto, createdBy?: number): Promise<CustomerEntity> {
+    // Check email uniqueness within company
+    const emailExists = await this.customerRepository.emailExists(createDto.email, companyId);
+    if (emailExists) {
+      throw new CustomerEmailExistsError(createDto.email, companyId);
+    }
+
+    // Hash password before storing
+    const hashedPassword = await hashPassword(createDto.password);
+
+    // Create customer with hashed password
+    return await this.customerRepository.create({
+      ...createDto,
+      password: hashedPassword,
+    });
+  }
+}
+```
+
+### Example 3: Dependency Injection with Provider
+
+```typescript
+// The AuthService class depends on JwtService, injected via the constructor
+
+@Injectable()
+export class AuthService {
+  constructor(private readonly jwtService: JwtService) {}
+
+  // Generates a JWT access token for a specific user
+  async createToken(user: User): Promise<string> {
+    const payload = { username: user.username, sub: user.id };
+    return this.jwtService.sign(payload);
+  }
+}
+```
+
+### Example 4: Repository Port Implementation
+
+```typescript
+// Implements CustomerRepositoryPort interface
+// Provides data access operations for Customer entities using Prisma
+
+@Injectable()
+export class PrismaCustomerRepository implements CustomerRepositoryPort {
+  constructor(private readonly prisma: PrismaService) {}
+
+  // Checks if email already exists for a given company
+  async emailExists(email: string, companyId: number): Promise<boolean> {
+    const count = await this.prisma.customer.count({
+      where: { email, companyId },
+    });
+    return count > 0;
+  }
+
+  // Creates a new customer record in the database
+  async create(data: CreateCustomerData): Promise<CustomerEntity> {
+    return await this.prisma.customer.create({ data });
+  }
+}
+```

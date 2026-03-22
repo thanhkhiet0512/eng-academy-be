@@ -1,0 +1,295 @@
+# Hexagonal Architecture & SOLID Principles
+
+Follow Hexagonal Architecture (Ports & Adapters) and SOLID principles in all code.
+
+**Structural rules (from refactor):** Controllers inject use cases (no `new UseCase()` in handlers). Use cases inject ports and other use cases via constructor (no `new OtherUseCase()` inside). Use **value imports** for any constructor-injected dependency so Nest can resolve DI; do not use `import type` for ports, ConfigService, or use case classes that are injected. Domain ports: prefer abstract class for DI token; do not re-export adapters from domain.
+
+## Phân biệt `infra` và `infrastructure`
+
+Hai thư mục này **khác chức năng** và **khác vai trò** trong kiến trúc. Không gộp hay nhầm lẫn.
+
+| Khía cạnh | `src/infra/` | `src/infrastructure/` |
+|-----------|--------------|------------------------|
+| **Chức năng** | Dịch vụ bên ngoài, cấu hình, tiện ích hạ tầng | **Persistence** – adapter truy cập database (Prisma) |
+| **Thuộc layer** | Adapters cho **external services** (không phải DB) | Adapters cho **persistence** – đúng layer “adapter” của Hexagonal (cổng ra DB) |
+| **Nội dung** | Cache, Mail, Queue, Storage, Shipping, SMS, Auth (password, JWT, guards) | Chỉ **database/prisma**: repository adapters, mappers cho domain |
+| **Ports implement** | `ICacheRepository`, `IMailService`, `IStorageServicePort`, `IPasswordService`, queue/shipping/sms ports | Domain **repository ports**: `UserRepositoryPort`, `CustomerRepositoryPort`, `AuthRepositoryPort`, v.v. |
+| **Ví dụ** | Redis cache, Nodemailer, BullMQ, MinIO, GHTK, SMS API, password hashing | `UserAdapter`, `CustomerAdapter`, `FileAdapter` – implement port từ `domain/*/ports/` |
+
+- **`infra`**: cấu hình, tích hợp dịch vụ ngoài (cache, mail, queue, storage, shipping, sms, auth). **Không** chứa adapter cho database.
+- **`infrastructure`**: **chỉ** persistence – implement các repository port của domain bằng Prisma. Đây là “cổng ra” database trong Hexagonal.
+
+Khi thêm adapter mới: nếu là **DB/repository** → đặt trong `infrastructure/database/prisma/`; nếu là **dịch vụ ngoài** (API, cache, mail, storage, …) → đặt trong `infra/`.
+
+## Architecture Layers
+
+### Domain Layer (`src/domain/`)
+
+- **Pure business logic** - No framework dependencies
+- **Entities** - Domain models with business rules
+- **Ports** - Abstractions for external dependencies: prefer **abstract class** when the port is injected in Nest (so it can be used as DI token); interface is fine when using string token + `@Inject('IPortName')`
+- **Value Objects** - Immutable domain concepts
+- **Domain Services** - Business logic that doesn't belong to entities
+- **Do not** re-export adapter implementations: ports stay in domain; repository adapters in `infrastructure/`, external-service adapters in `infra/`
+
+### Application Layer (`src/application/`)
+
+- **Use Cases** - Orchestrate business logic; each use case is `@Injectable()`, registered in the module's `providers` and `exports`
+- **DTOs** - Data Transfer Objects for input/output
+- **Depends on**: Domain ports (abstract classes or interfaces), NOT adapter implementations
+- **No direct dependencies** on infrastructure or presentation
+- **No `new UseCase(...)`** inside use cases — inject dependent use cases via constructor
+
+### Adapters (Infrastructure side of Hexagonal)
+
+Trong Hexagonal, “infrastructure” = mọi adapter (cổng ra thế giới bên ngoài). Trong codebase này chia làm **hai thư mục**:
+
+**1. `src/infra/` — External services & config (không phải DB)**
+
+- **Chức năng**: Cache, mail, queue, storage, shipping, SMS, auth (password, JWT, guards).
+- **Cấu trúc**: `infra/{service}/ports/`, `infra/{service}/adapters/{implementation}/`.
+- **Ví dụ**: `infra/cache/adapters/redis/`, `infra/mail/adapters/nodemailer/`, `infra/queue/adapters/bull/`, `infra/storage/minio.service.ts`, `infra/auth/password.service.impl.ts`.
+
+**2. `src/infrastructure/` — Persistence layer (đúng layer adapter cho DB)**
+
+- **Chức năng**: Chỉ implement **repository ports** của domain bằng Prisma (đọc/ghi database).
+- **Cấu trúc**: `infrastructure/database/prisma/{domain}/` — mỗi domain có adapter + mapper.
+- **Ví dụ**: `UserAdapter`, `CustomerAdapter`, `FileAdapter`, `AuthAdapter` — implement port từ `domain/*/ports/*.repository.port.ts`.
+- **Không** chứa cache, mail, queue, storage, shipping, SMS; chỉ DB.
+
+### Presentation Layer (`src/presentation/`)
+
+- **Controllers** - Handle HTTP requests/responses; depend only on application layer (use cases)
+- **Helpers** - Presentation-specific utilities (cookies, request handling)
+- **Never** instantiate use cases with `new UseCase(...)` in handlers — always inject use cases in the controller constructor
+- Application module must list those use cases in `providers` and `exports` and be imported by the presentation module
+
+### Common Layer (`src/common/`)
+
+- **Types** - Pure TypeScript types (no framework dependencies)
+- **Utils** - Pure utility functions (no side effects)
+- **Enums** - Domain enums
+- **Errors** - Exception classes
+- **Filters** - Exception filters
+- **Interceptors** - Response interceptors
+- **DTOs** - Common DTOs (pagination, filters)
+
+## SOLID Principles
+
+### Single Responsibility Principle (SRP)
+
+- Each class/module should have **one reason to change**
+- Separate concerns: business logic, data access, presentation
+- Example: `ICacheRepository` only handles cache operations
+
+### Open/Closed Principle (OCP)
+
+- **Open for extension**, **closed for modification**
+- Use interfaces (ports) to allow new implementations
+- Example: Add Memcached adapter without changing application code
+
+### Liskov Substitution Principle (LSP)
+
+- Subtypes must be substitutable for their base types
+- All implementations of a port must be interchangeable
+- Example: `RedisCacheRepository` and `MemcachedCacheRepository` both implement `ICacheRepository`
+
+### Interface Segregation Principle (ISP)
+
+- Clients should not depend on interfaces they don't use
+- Create small, focused interfaces
+- Example: `IMailService` only has mail-related methods
+
+### Dependency Inversion Principle (DIP)
+
+- **Depend on abstractions, not concretions**
+- Application layer depends on ports (interfaces), not adapters
+- Infrastructure implements ports
+- Example: Use `ICacheRepository` in use cases, not `RedisCacheRepository`
+
+## Code Organization Rules
+
+### Controller & Use Case Wiring
+
+1. **Controllers** inject use cases in the constructor. Never do `new SomeUseCase(...)` inside a handler.
+2. **Application module** (e.g. `UserModule`, `FileManagementModule`) must declare all use cases in `providers` and `exports`. Presentation module imports the application module to get use cases.
+3. **Use cases** that depend on other use cases inject them via constructor; do not instantiate with `new` inside a use case.
+4. Every use case class must be decorated with `@Injectable()` and registered in its application module.
+
+### NestJS DI: Value Imports for Injected Dependencies
+
+Any type that is **injected in the constructor** (ports, `ConfigService`, other use cases, repositories) must be imported with a **value import**, not `import type`. Type-only imports are erased at compile time, so Nest cannot resolve the dependency and will throw "Nest can't resolve dependencies (?, Function, ...)".
+
+- **Use value import** for: ports (abstract class or class), `ConfigService`, other use case classes, repository ports — whenever they appear as constructor parameters.
+- **Use `import type`** only for: DTOs, response types, entity types used only in method signatures or return types (not as constructor deps).
+
+```typescript
+// ✅ CORRECT: Value import for constructor-injected port
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { IStorageServicePort } from '@domain/file-management/ports/storage-service.port';
+import { FileRepositoryPort } from '@domain/file-management/ports/file.repository.port';
+
+@Injectable()
+export class UploadFileUseCase {
+  constructor(
+    private readonly storageService: IStorageServicePort,
+    private readonly fileRepository: FileRepositoryPort,
+    private readonly configService: ConfigService,
+  ) {}
+}
+
+// ❌ WRONG: import type for constructor param — breaks Nest DI
+import type { IStorageServicePort } from '@domain/file-management/ports/storage-service.port';
+// Nest sees "Function" and cannot resolve
+```
+
+### Ports & Adapters Pattern
+
+1. **Define Port** in domain: `src/domain/{domain}/ports/` — prefer **abstract class** so Nest can use it as DI token; interface is OK with string token.
+2. **Implement Adapter**:
+   - **Repository port (DB)** → `src/infrastructure/database/prisma/{domain}/` (e.g. `UserAdapter`, `CustomerAdapter`).
+   - **External service port** (cache, mail, queue, storage, shipping, SMS, auth) → `src/infra/{service}/adapters/{implementation}/`.
+3. **Bind in Module** — `{ provide: PortClass, useClass: AdapterClass }` for abstract class; or `{ provide: 'IPortName', useClass: AdapterClass }` for interface.
+4. **Inject Port** — Use class token when port is abstract class; use `@Inject('IPortName')` when port is interface.
+5. **Domain** does not re-export adapters; only ports and entities.
+
+### Example Structure
+
+```
+domain/
+  {domain}/
+    ports/
+      *.port.ts             # Abstract class or interface (repository, storage, mail, ...)
+
+infra/                      # External services — NOT persistence
+  cache/, mail/, queue/, storage/, shipping/, sms/, auth/
+  {service}/ports/          # Interface for that service
+  {service}/adapters/       # Redis, Nodemailer, Bull, MinIO, GHTK, etc.
+
+infrastructure/             # Persistence only — Hexagonal “adapter” for DB
+  database/prisma/
+    {domain}/
+      *.adapter.ts          # Implements domain repository port (UserAdapter, CustomerAdapter, ...)
+      *.mapper.ts           # Domain <-> Prisma mapping
+
+application/
+  {module}.module.ts        # providers: [Port, Adapter, UseCases...], exports: [...]
+  use-cases/
+    *.use-case.ts           # @Injectable(), constructor(port, ...) — value imports for DI
+
+presentation/
+  controllers/              # constructor(useCase: SomeUseCase) — no new UseCase()
+```
+
+### Dependency Injection Pattern
+
+```typescript
+// ✅ CORRECT: Inject port (abstract class as token)
+@Injectable()
+export class MyUseCase {
+  constructor(
+    private readonly cache: ICacheRepository, // Port abstract class — value import
+  ) {}
+}
+
+// ✅ CORRECT: Inject port with string token (interface)
+@Injectable()
+export class MyUseCase {
+  constructor(
+    @Inject('ICacheRepository')
+    private readonly cache: ICacheRepository,
+  ) {}
+}
+
+// ❌ WRONG: Direct dependency on implementation
+@Injectable()
+export class MyUseCase {
+  constructor(
+    private readonly cache: RedisCacheRepository,
+  ) {}
+}
+
+// ❌ WRONG: new UseCase() in controller or inside another use case
+export class MyController {
+  someHandler() {
+    const useCase = new SomeUseCase(...); // Use constructor injection instead
+  }
+}
+```
+
+## Pure Functions
+
+### Common Utils (`src/common/utils/`)
+
+- **No side effects** - Same input always produces same output
+- **No framework dependencies** - Can be used in any context
+- **Easy to test** - No mocking needed
+- Example: `slugify()`, `buildSearchCondition()`
+
+### Presentation Helpers (`src/presentation/helpers/`)
+
+- **Framework-dependent** - Can use Express, NestJS, etc.
+- **Side effects allowed** - Cookie setting, request handling
+- Example: `setAccessTokenCookie()`, `getRequestId()`
+
+## File Naming Conventions
+
+- **Ports**: `*.port.ts` (e.g., `cache.repository.port.ts`)
+- **Adapters**: Implementation name (e.g., `redis.repository.ts`)
+- **Modules**: `*.module.ts`
+- **Use Cases**: `*.use-case.ts`
+- **DTOs**: `*.dto.ts`
+- **Entities**: `*.entity.ts`
+
+## Import Rules
+
+### ✅ Allowed Imports
+
+- Application → Domain (ports, entities)
+- Application → Common (types, utils, enums)
+- Infrastructure → Domain (ports, entities)
+- Infrastructure → Common (types, utils)
+- Presentation → Application (use cases)
+- Presentation → Common (types, utils)
+- Presentation → Domain (entities for serialization)
+
+### ❌ Forbidden Imports
+
+- Application → Infrastructure (use ports instead)
+- Domain → Any other layer (domain is independent)
+- Common → Infrastructure or Presentation (common is framework-agnostic)
+
+### Import Rule for DI (NestJS)
+
+- **Constructor-injected dependencies** (ports, ConfigService, use cases, repository ports): use **value import** (`import { X } from '...'`). Do not use `import type` for these, or Nest will fail to resolve (token becomes undefined at runtime).
+- **Types only** (DTOs, response types, entity types in method signatures): `import type` is fine.
+
+## Testing Guidelines
+
+- **Unit Tests**: Test pure functions and use cases with mocked ports
+- **Integration Tests**: Test adapters with real implementations
+- **Mock Ports**: Use interfaces for easy mocking in tests
+
+## Migration Checklist
+
+### When adding a new adapter
+
+1. ✅ **Repository (DB)**: port in `domain/{domain}/ports/`, adapter in `infrastructure/database/prisma/{domain}/`.
+2. ✅ **External service** (cache, mail, queue, storage, shipping, SMS, auth): port in `domain/` or `infra/{service}/ports/`, adapter in `infra/{service}/adapters/{implementation}/`.
+3. ✅ In module: `{ provide: Port, useClass: Adapter }` (and optionally string token for backward compat).
+4. ✅ In use case: value import for port, inject via constructor; use `@Injectable()` and register in application module.
+5. ✅ Do not re-export adapters from domain.
+
+### When adding a new use case or controller
+
+1. ✅ Use case: `@Injectable()`, constructor inject ports and other use cases (value imports), no `new OtherUseCase()` inside
+2. ✅ Application module: add use case to `providers` and `exports`; import other modules if use case depends on their use cases
+3. ✅ Controller: inject use cases in constructor; never `new UseCase(...)` in handlers
+4. ✅ Presentation module: import the application module that exports the use cases
+
+### Avoiding "Nest can't resolve dependencies" / "Function at index [0]"
+
+1. ✅ Use **value import** for every type that is a constructor parameter (ports, ConfigService, use cases)
+2. ✅ Ensure the port/use case is provided (and exported) in a module that is imported where it is injected
+3. ✅ For optional dependencies use `@Optional()` and keep string token `@Inject('Token')` if port is interface
