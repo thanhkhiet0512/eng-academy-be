@@ -38,11 +38,11 @@ export class AnswerDto {
   @IsOptional()
   text?: string;
 
-  @ApiPropertyOptional({ type: [String] })
+  @ApiPropertyOptional({ type: [Number] })
   @IsArray()
-  @IsString({ each: true })
+  @IsNumber({}, { each: true })
   @IsOptional()
-  arranged?: string[];
+  arranged?: number[];
 }
 
 export class SubmitAttemptDto {

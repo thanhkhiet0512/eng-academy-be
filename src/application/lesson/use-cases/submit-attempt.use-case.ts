@@ -62,7 +62,8 @@ export class SubmitAttemptUseCase {
       case "word_arrangement": {
         if (!answer.arranged?.length) return false;
         const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
-        return normalize(answer.arranged.join(" ")) === normalize(exercise.answer);
+        const reconstructed = answer.arranged.map((i) => exercise.words[i] ?? "").join(" ");
+        return normalize(reconstructed) === normalize(exercise.answer);
       }
     }
   }

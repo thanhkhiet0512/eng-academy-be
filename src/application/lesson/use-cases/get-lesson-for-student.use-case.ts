@@ -61,11 +61,11 @@ export class GetLessonForStudentUseCase {
         };
 
       case "word_arrangement": {
-        const shuffled = [...exercise.words].sort(() => Math.random() - 0.5);
         return {
           id: exercise.id,
           type: exercise.type,
-          words: shuffled,
+          // Giữ thứ tự gốc để student gửi bankIndex ổn định cho grading.
+          words: exercise.words,
         };
       }
     }
