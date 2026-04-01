@@ -1,4 +1,6 @@
 // Domain entity representing a student
+export type StudentStatus = "ACTIVE" | "INACTIVE";
+
 export type StudentEntity = {
   id: string;
   classId: string;
@@ -7,5 +9,7 @@ export type StudentEntity = {
   dateOfBirth: Date | null;
   parentName: string | null;
   parentPhone: string | null;
+  note: string | null;
+  status: StudentStatus;
   createdAt: Date;
 };

@@ -1,21 +1,21 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
-import * as XLSX from "xlsx";
+import { Injectable } from "@nestjs/common";
+import { ExcelServicePort } from "../../../domain/excel/ports/excel.service.port";
+import { AppError } from "../../../common/errors/app.error";
 
-// Use case: parse an Excel file of vocabulary terms and return a validated preview
 @Injectable()
 export class ParseExcelUseCase {
+  constructor(private readonly excel: ExcelServicePort) {}
+
   execute(file: Express.Multer.File) {
     const ext = file.originalname.split(".").pop()?.toLowerCase();
     if (!ext || !["xlsx", "xls", "csv"].includes(ext)) {
-      throw new BadRequestException("Chỉ hỗ trợ file .xlsx, .xls, .csv");
+      throw AppError.badRequest("Chỉ hỗ trợ file .xlsx, .xls, .csv");
     }
 
-    const workbook = XLSX.read(file.buffer, { type: "buffer" });
-    const sheet = workbook.Sheets[workbook.SheetNames[0] ?? ""];
-    if (!sheet) throw new BadRequestException("File trống hoặc không có dữ liệu");
-
-    const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
-    if (rawRows.length === 0) throw new BadRequestException("File trống hoặc không có dữ liệu");
+    const rawRows = this.excel.parse(file.buffer);
+    if (rawRows.length === 0) {
+      throw AppError.badRequest("File trống hoặc không có dữ liệu");
+    }
 
     const headerMap = this.buildHeaderMap(rawRows[0]!);
     const rows = rawRows.map((rawRow, idx) => {

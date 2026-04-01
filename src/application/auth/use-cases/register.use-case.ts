@@ -1,9 +1,10 @@
-import { ConflictException, Injectable } from "@nestjs/common";
-import { JwtService } from "@nestjs/jwt";
+import { Injectable } from "@nestjs/common";
 import type { RegisterDto } from "../dtos/register.dto";
 import type { AuthUser } from "../../../domain/auth/entities/auth-user.entity";
 import { UserRepositoryPort } from "../../../domain/auth/ports/user.repository.port";
 import { PasswordServicePort } from "../../../domain/auth/ports/password.service.port";
+import { TokenServicePort } from "../../../domain/auth/ports/token.service.port";
+import { AppError } from "../../../common/errors/app.error";
 
 export type RegisterResult = {
   accessToken: string;
@@ -16,14 +17,14 @@ export class RegisterUseCase {
   constructor(
     private readonly users: UserRepositoryPort,
     private readonly passwords: PasswordServicePort,
-    private readonly jwt: JwtService,
+    private readonly tokens: TokenServicePort,
   ) {}
 
   async execute(dto: RegisterDto): Promise<RegisterResult> {
     const email = dto.email.trim().toLowerCase();
     const existing = await this.users.findByEmail(email);
     if (existing) {
-      throw new ConflictException("Email already registered");
+      throw AppError.conflict("Email already registered", "EMAIL_TAKEN");
     }
 
     const passwordHash = await this.passwords.hash(dto.password);
@@ -34,7 +35,12 @@ export class RegisterUseCase {
       role: "TEACHER",
     });
 
-    const accessToken = await this.signAccessToken(user);
+    const accessToken = await this.tokens.sign({
+      sub: user.id,
+      email: user.email,
+      role: user.role,
+    });
+
     return {
       accessToken,
       tokenType: "Bearer",
@@ -45,13 +51,5 @@ export class RegisterUseCase {
         role: user.role,
       },
     };
-  }
-
-  private async signAccessToken(user: AuthUser): Promise<string> {
-    return this.jwt.signAsync({
-      sub: user.id,
-      email: user.email,
-      role: user.role,
-    });
   }
 }

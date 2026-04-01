@@ -1,9 +1,11 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { randomBytes } from "crypto";
 import { ClassRepositoryPort } from "../../../domain/class/ports/class.repository.port";
 import type { ClassEntity } from "../../../domain/class/entities/class.entity";
+import { AppError } from "../../../common/errors/app.error";
 
 const SHORT_ID_CHARS = "0123456789abcdefghijklmnopqrstuvwxyz";
+const MAX_AUTO_CODE_ATTEMPTS = 50;
 
 export type CreateClassInput = {
   teacherId: string;
@@ -25,22 +27,29 @@ export class CreateClassUseCase {
   async execute(input: CreateClassInput): Promise<CreateClassResult> {
     const name = input.name.trim();
     if (name.length < 2) {
-      throw new BadRequestException("name must be at least 2 characters");
+      throw AppError.badRequest("Tên lớp phải có ít nhất 2 ký tự");
     }
     const gradeLevel = (input.gradeLevel ?? "1-2").trim() || "1-2";
+
+    // Tên lớp unique theo từng teacher
+    const nameExists = await this.classes.nameExistsForTeacher(input.teacherId, name);
+    if (nameExists) {
+      throw AppError.conflict("Bạn đã có lớp tên này, vui lòng chọn tên khác", "CLASS_NAME_TAKEN");
+    }
 
     // Validate and deduplicate custom code, or auto-generate one
     let code: string;
     if (input.code?.trim()) {
       const requested = input.code.trim();
       if (!this.isValidDisplayCode(requested)) {
-        throw new BadRequestException(
+        throw AppError.badRequest(
           "Mã lớp: 2–32 ký tự, chỉ chữ số, gạch ngang, gạch dưới, dấu chấm",
         );
       }
+      // Mã lớp unique theo từng teacher
       const dup = await this.classes.codeExistsForTeacher(input.teacherId, requested);
       if (dup) {
-        throw new BadRequestException("Mã lớp đã tồn tại trong tài khoản của bạn");
+        throw AppError.conflict("Bạn đã có lớp mã này, vui lòng chọn mã khác", "CLASS_CODE_TAKEN");
       }
       code = requested;
     } else {
@@ -65,7 +74,7 @@ export class CreateClassUseCase {
 
   private async nextAutoCode(teacherId: string): Promise<string> {
     // Try sequential codes like L0001, L0002; fall back to timestamp-based if all taken
-    for (let bump = 0; bump < 50; bump++) {
+    for (let bump = 0; bump < MAX_AUTO_CODE_ATTEMPTS; bump++) {
       const n = await this.classes.countByTeacherId(teacherId);
       const candidate = `L${String(n + 1 + bump).padStart(4, "0")}`;
       const dup = await this.classes.codeExistsForTeacher(teacherId, candidate);

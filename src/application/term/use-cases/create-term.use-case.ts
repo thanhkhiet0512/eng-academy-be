@@ -1,6 +1,7 @@
-import { BadRequestException, ForbiddenException, Injectable } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { ClassRepositoryPort } from "../../../domain/class/ports/class.repository.port";
 import { TermRepositoryPort } from "../../../domain/term/ports/term.repository.port";
+import { AppError } from "../../../common/errors/app.error";
 
 export type CreateTermInput = {
   classId: string;
@@ -20,15 +21,15 @@ export class CreateTermUseCase {
 
   async execute(teacherId: string, input: CreateTermInput): Promise<{ termId: string }> {
     const classId = input.classId.trim();
-    if (!classId) throw new BadRequestException("classId is required");
+    if (!classId) throw AppError.badRequest("classId is required");
 
     const wordEn = input.wordEn.trim();
     const wordVi = input.wordVi.trim();
-    if (!wordEn || !wordVi) throw new BadRequestException("wordEn and wordVi are required");
+    if (!wordEn || !wordVi) throw AppError.badRequest("wordEn and wordVi are required");
 
     const classroom = await this.classes.findById(classId);
     if (!classroom || classroom.teacherId !== teacherId) {
-      throw new ForbiddenException("Bạn không có quyền với lớp này");
+      throw AppError.forbidden("Bạn không có quyền với lớp này");
     }
 
     const created = await this.terms.create({

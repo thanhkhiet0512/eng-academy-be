@@ -1,6 +1,7 @@
-import { BadRequestException, ForbiddenException, Injectable } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { ClassRepositoryPort } from "../../../domain/class/ports/class.repository.port";
 import { AttendanceRepositoryPort } from "../../../domain/attendance/ports/attendance.repository.port";
+import { AppError } from "../../../common/errors/app.error";
 
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -20,11 +21,11 @@ export class GetAttendanceUseCase {
   async execute(classId: string, teacherId: string, date: string): Promise<GetAttendanceResult> {
     const classroom = await this.classes.findById(classId);
     if (!classroom || classroom.teacherId !== teacherId) {
-      throw new ForbiddenException("Bạn không có quyền với lớp này");
+      throw AppError.forbidden("Bạn không có quyền với lớp này");
     }
 
     if (!date || !DATE_REGEX.test(date)) {
-      throw new BadRequestException("Query ?date=YYYY-MM-DD là bắt buộc");
+      throw AppError.badRequest("Query ?date=YYYY-MM-DD là bắt buộc");
     }
 
     const rows = await this.attendance.findByClassIdAndDate(classId, date);

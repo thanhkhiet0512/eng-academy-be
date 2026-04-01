@@ -1,10 +1,10 @@
 import { Module } from "@nestjs/common";
-import { ConfigModule } from "@nestjs/config";
 import { UploadController } from "./upload.controller";
 import { UploadFileUseCase } from "../../application/upload/use-cases/upload-file.use-case";
+import { StorageModule } from "../../infra/storage/storage.module";
 
 @Module({
-  imports: [ConfigModule],
+  imports: [StorageModule],
   controllers: [UploadController],
   providers: [UploadFileUseCase],
   exports: [UploadFileUseCase],

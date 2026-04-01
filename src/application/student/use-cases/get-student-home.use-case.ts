@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { StudentRepositoryPort } from "../../../domain/student/ports/student.repository.port";
 import { ClassRepositoryPort } from "../../../domain/class/ports/class.repository.port";
 import { LessonRepositoryPort } from "../../../domain/lesson/ports/lesson.repository.port";
 import { AttemptRepositoryPort } from "../../../domain/lesson/ports/attempt.repository.port";
+import { AppError } from "../../../common/errors/app.error";
 
 // Use case: return the home page payload for a student (public, no auth)
 @Injectable()
@@ -16,7 +17,7 @@ export class GetStudentHomeUseCase {
 
   async execute(studentId: string) {
     const student = await this.students.findById(studentId.trim());
-    if (!student) throw new NotFoundException("Không tìm thấy học sinh");
+    if (!student) throw AppError.notFound("Không tìm thấy học sinh");
 
     const [classroom, lessonList, attemptList] = await Promise.all([
       this.classes.findById(student.classId),

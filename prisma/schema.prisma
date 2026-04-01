@@ -3,14 +3,8 @@ generator client {
   output   = "../node_modules/.prisma/client"
 }
 
-generator clientFrontend {
-  provider = "prisma-client-js"
-  output   = "/Users/mac/Documents/code/eng-academy/frontend/node_modules/.prisma/client"
-}
-
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 enum UserRole {
@@ -20,51 +14,65 @@ enum UserRole {
 }
 
 model User {
-  id                       String   @id @default(uuid())
-  email                    String   @unique
-  passwordHash             String   @map("password_hash")
-  name                     String
-  role                     UserRole @default(TEACHER)
-  lastWorkingClassId       String?  @map("last_working_class_id")
-  myClassesDetailClassId   String?  @map("my_classes_detail_class_id")
-  createdAt                DateTime @default(now()) @map("created_at")
-  updatedAt                DateTime @updatedAt @map("updated_at")
+  id                     String   @id @default(uuid())
+  email                  String   @unique
+  passwordHash           String   @map("password_hash")
+  name                   String
+  role                   UserRole @default(TEACHER)
+  lastWorkingClassId     String?  @map("last_working_class_id")
+  myClassesDetailClassId String?  @map("my_classes_detail_class_id")
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
 
   classes Class[]
 
   @@map("users")
 }
 
-model Class {
-  id             String   @id
-  name           String
-  gradeLevel     String   @map("grade_level")
-  code           String?
-  classCode      String?  @map("class_code")
-  teacherId      String   @map("teacher_id")
-  teacherKeyHash String?  @map("teacher_key_hash")
-  createdAt      DateTime @default(now()) @map("created_at")
+enum ClassStatus {
+  ACTIVE
+  ARCHIVED
+}
 
-  teacher   User             @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  students  Student[]
-  lessons   Lesson[]
-  terms     VocabularyTerm[]
-  attempts  Attempt[]
-  attendance Attendance[]
+model Class {
+  id             String      @id
+  name           String
+  gradeLevel     String      @map("grade_level")
+  code           String?
+  classCode      String?     @map("class_code")
+  teacherId      String      @map("teacher_id")
+  teacherKeyHash String?     @map("teacher_key_hash")
+  status         ClassStatus @default(ACTIVE)
+  createdAt      DateTime    @default(now()) @map("created_at")
+
+  teacher     User             @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  students    Student[]
+  lessons     Lesson[]
+  terms       VocabularyTerm[]
+  attempts    Attempt[]
+  attendance  Attendance[]
+  assignments Assignment[]
 
   @@index([teacherId])
   @@map("classes")
 }
 
+enum StudentStatus {
+  ACTIVE
+  INACTIVE
+}
+
 model Student {
-  id          String    @id
-  classId     String    @map("class_id")
+  id          String        @id
+  classId     String        @map("class_id")
   name        String
   code        String?
-  dateOfBirth DateTime? @map("date_of_birth")
-  parentName  String?   @map("parent_name")
-  parentPhone String?   @map("parent_phone")
-  createdAt   DateTime  @default(now()) @map("created_at")
+  dateOfBirth DateTime?     @map("date_of_birth")
+  parentName  String?       @map("parent_name")
+  parentPhone String?       @map("parent_phone")
+  note        String? // Ghi chú riêng của GV về HS
+  status      StudentStatus @default(ACTIVE)
+  createdAt   DateTime      @default(now()) @map("created_at")
 
   class      Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
   attempts   Attempt[]
@@ -75,14 +83,14 @@ model Student {
 }
 
 model VocabularyTerm {
-  id               String   @id @default(uuid())
-  classId          String   @map("class_id")
-  wordEn           String   @map("word_en")
-  wordVi           String   @map("word_vi")
-  imageUrl         String?  @map("image_url")
-  audioUrl         String?  @map("audio_url")
-  exampleSentence  String?  @map("example_sentence")
-  createdAt        DateTime @default(now()) @map("created_at")
+  id              String   @id @default(uuid())
+  classId         String   @map("class_id")
+  wordEn          String   @map("word_en")
+  wordVi          String   @map("word_vi")
+  imageUrl        String?  @map("image_url")
+  audioUrl        String?  @map("audio_url")
+  exampleSentence String?  @map("example_sentence")
+  createdAt       DateTime @default(now()) @map("created_at")
 
   class Class @relation(fields: [classId], references: [id], onDelete: Cascade)
 
@@ -100,8 +108,9 @@ model Lesson {
   questions     Json
   createdAt     DateTime @default(now()) @map("created_at")
 
-  class    Class     @relation(fields: [classId], references: [id], onDelete: Cascade)
-  attempts Attempt[]
+  class       Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  attempts    Attempt[]
+  assignments Assignment[]
 
   @@index([classId])
   @@map("lessons")
@@ -139,4 +148,28 @@ model Attendance {
 
   @@unique([classId, date, studentId], name: "attendance_class_date_student")
   @@map("attendance")
+}
+
+enum AssignmentStatus {
+  ACTIVE
+  CLOSED
+}
+
+model Assignment {
+  id          String           @id @default(uuid())
+  classId     String           @map("class_id")
+  lessonId    String           @map("lesson_id")
+  title       String
+  description String?
+  dueDate     DateTime         @map("due_date")
+  maxAttempts Int              @default(1) @map("max_attempts")
+  status      AssignmentStatus @default(ACTIVE)
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  class  Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@index([classId])
+  @@index([lessonId])
+  @@map("assignments")
 }

@@ -1,7 +1,7 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { ROLES_KEY } from "../decorators/roles.decorator";
-import type { UserRole } from "../../domain/auth/user-role";
+import type { UserRole } from "../../../domain/auth/user-role";
 import type { RequestUser } from "../types/request-user.type";
 
 // Global guard: runs after JwtAuthGuard and enforces @Roles() metadata

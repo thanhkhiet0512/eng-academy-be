@@ -2,8 +2,8 @@ import { BadRequestException, Controller, Post, Req, UploadedFile, UseIntercepto
 import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { FileInterceptor } from "@nestjs/platform-express";
 import type { Request } from "express";
-import { CurrentUser } from "../../auth/decorators/current-user.decorator";
-import type { RequestUser } from "../../auth/types/request-user.type";
+import { CurrentUser } from "../../infra/auth/decorators/current-user.decorator";
+import type { RequestUser } from "../../infra/auth/types/request-user.type";
 import { UploadFileUseCase } from "../../application/upload/use-cases/upload-file.use-case";
 
 @ApiTags("upload")

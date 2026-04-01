@@ -1,9 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../../../prisma/prisma.service";
 import { StudentRepositoryPort } from "../../../../domain/student/ports/student.repository.port";
-import type { StudentEntity } from "../../../../domain/student/entities/student.entity";
+import type { StudentEntity, StudentStatus } from "../../../../domain/student/entities/student.entity";
+import { mapStudentRowToDomain } from "./student.mapper";
 
-// Implements StudentRepositoryPort — maps Prisma rows to domain StudentEntity
 @Injectable()
 export class StudentRepositoryAdapter extends StudentRepositoryPort {
   constructor(private readonly prisma: PrismaService) {
@@ -12,7 +12,7 @@ export class StudentRepositoryAdapter extends StudentRepositoryPort {
 
   async findById(id: string): Promise<StudentEntity | null> {
     const row = await this.prisma.student.findUnique({ where: { id } });
-    return row ? this.map(row) : null;
+    return row ? mapStudentRowToDomain(row) : null;
   }
 
   async findByClassId(classId: string): Promise<StudentEntity[]> {
@@ -20,15 +20,14 @@ export class StudentRepositoryAdapter extends StudentRepositoryPort {
       where: { classId },
       orderBy: { code: "asc" },
     });
-    return rows.map((r) => this.map(r));
+    return rows.map((r) => mapStudentRowToDomain(r));
   }
 
-  // Exact name match (case-insensitive) within a class
   async findByClassIdAndName(classId: string, name: string): Promise<StudentEntity[]> {
     const rows = await this.prisma.student.findMany({
       where: { classId, name: { equals: name, mode: "insensitive" } },
     });
-    return rows.map((r) => this.map(r));
+    return rows.map((r) => mapStudentRowToDomain(r));
   }
 
   async countByClassId(classId: string): Promise<number> {
@@ -60,32 +59,28 @@ export class StudentRepositoryAdapter extends StudentRepositoryPort {
         parentPhone: input.parentPhone ?? null,
       },
     });
-    return this.map(row);
+    return mapStudentRowToDomain(row);
+  }
+
+  async update(
+    id: string,
+    input: Partial<{
+      name: string;
+      dateOfBirth: Date | null;
+      parentName: string | null;
+      parentPhone: string | null;
+      note: string | null;
+      status: StudentStatus;
+    }>,
+  ): Promise<StudentEntity> {
+    const row = await this.prisma.student.update({
+      where: { id },
+      data: input,
+    });
+    return mapStudentRowToDomain(row);
   }
 
   async delete(id: string): Promise<void> {
     await this.prisma.student.delete({ where: { id } });
-  }
-
-  private map(row: {
-    id: string;
-    classId: string;
-    name: string;
-    code: string | null;
-    dateOfBirth: Date | null;
-    parentName: string | null;
-    parentPhone: string | null;
-    createdAt: Date;
-  }): StudentEntity {
-    return {
-      id: row.id,
-      classId: row.classId,
-      name: row.name,
-      code: row.code,
-      dateOfBirth: row.dateOfBirth,
-      parentName: row.parentName,
-      parentPhone: row.parentPhone,
-      createdAt: row.createdAt,
-    };
   }
 }

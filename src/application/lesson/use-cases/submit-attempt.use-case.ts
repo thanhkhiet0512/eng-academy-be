@@ -1,9 +1,10 @@
-import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import type { Exercise } from "../../../domain/lesson/entities/exercise.entity";
 import { AttemptRepositoryPort } from "../../../domain/lesson/ports/attempt.repository.port";
 import { LessonRepositoryPort } from "../../../domain/lesson/ports/lesson.repository.port";
 import { StudentRepositoryPort } from "../../../domain/student/ports/student.repository.port";
 import type { AnswerDto, SubmitAttemptDto } from "../dtos/submit-attempt.dto";
+import { AppError } from "../../../common/errors/app.error";
 
 @Injectable()
 export class SubmitAttemptUseCase {
@@ -15,13 +16,13 @@ export class SubmitAttemptUseCase {
 
   async execute(dto: SubmitAttemptDto) {
     const student = await this.students.findById(dto.studentId);
-    if (!student) throw new NotFoundException("Học sinh không tồn tại");
+    if (!student) throw AppError.notFound("Học sinh không tồn tại");
 
     const lesson = await this.lessons.findById(dto.lessonId);
-    if (!lesson) throw new NotFoundException("Bài học không tồn tại");
+    if (!lesson) throw AppError.notFound("Bài học không tồn tại");
 
     if (student.classId !== lesson.classId) {
-      throw new ForbiddenException("Bài học không thuộc lớp của bạn");
+      throw AppError.forbidden("Bài học không thuộc lớp của bạn");
     }
 
     let score = 0;

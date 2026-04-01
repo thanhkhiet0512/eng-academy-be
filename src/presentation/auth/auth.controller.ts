@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   HttpCode,
+  Patch,
   Post,
   Res,
 } from "@nestjs/common";
@@ -12,9 +13,10 @@ import { RegisterDto } from "../../application/auth/dtos/register.dto";
 import { LoginDto } from "../../application/auth/dtos/login.dto";
 import { RegisterUseCase } from "../../application/auth/use-cases/register.use-case";
 import { LoginUseCase } from "../../application/auth/use-cases/login.use-case";
-import { Public } from "../../auth/decorators/public.decorator";
-import { CurrentUser } from "../../auth/decorators/current-user.decorator";
-import type { RequestUser } from "../../auth/types/request-user.type";
+import { UpdateProfileUseCase } from "../../application/auth/use-cases/update-profile.use-case";
+import { Public } from "../../infra/auth/decorators/public.decorator";
+import { CurrentUser } from "../../infra/auth/decorators/current-user.decorator";
+import type { RequestUser } from "../../infra/auth/types/request-user.type";
 
 const SESSION_COOKIE = "ea_session";
 const SESSION_AGE_SECONDS = 60 * 60 * 24 * 7;
@@ -25,6 +27,7 @@ export class AuthController {
   constructor(
     private readonly registerUseCase: RegisterUseCase,
     private readonly loginUseCase: LoginUseCase,
+    private readonly updateProfileUseCase: UpdateProfileUseCase,
   ) {}
 
   @Public()
@@ -55,6 +58,16 @@ export class AuthController {
       email: result.user.email,
       name: result.user.name,
     };
+  }
+
+  @Patch("profile")
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Cập nhật tên và/hoặc mật khẩu" })
+  async updateProfile(
+    @CurrentUser() user: RequestUser,
+    @Body() body: { name?: string; currentPassword?: string; newPassword?: string },
+  ) {
+    return this.updateProfileUseCase.execute({ userId: user.id, ...body });
   }
 
   @Get("me")

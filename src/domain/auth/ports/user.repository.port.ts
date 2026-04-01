@@ -16,6 +16,7 @@ export abstract class UserRepositoryPort {
     name: string;
     role: UserRole;
   }): Promise<AuthUser>;
+  abstract updateProfile(userId: string, patch: { name?: string; passwordHash?: string }): Promise<AuthUser>;
   abstract findTeacherPreferences(userId: string): Promise<TeacherPreferences | null>;
   abstract updateTeacherPreferences(
     userId: string,

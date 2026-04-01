@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Param, Post } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
-import { Public } from "../../auth/decorators/public.decorator";
+import { Public } from "../../infra/auth/decorators/public.decorator";
 import { LookupStudentUseCase } from "../../application/student/use-cases/lookup-student.use-case";
 import { GetStudentHomeUseCase } from "../../application/student/use-cases/get-student-home.use-case";
 import { GetStudentProgressUseCase } from "../../application/student/use-cases/get-student-progress.use-case";

@@ -2,8 +2,8 @@ import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../../../prisma/prisma.service";
 import { TermRepositoryPort } from "../../../../domain/term/ports/term.repository.port";
 import type { TermEntity } from "../../../../domain/term/entities/term.entity";
+import { mapTermRowToDomain } from "./term.mapper";
 
-// Implements TermRepositoryPort — maps Prisma rows to domain TermEntity
 @Injectable()
 export class TermRepositoryAdapter extends TermRepositoryPort {
   constructor(private readonly prisma: PrismaService) {
@@ -12,7 +12,7 @@ export class TermRepositoryAdapter extends TermRepositoryPort {
 
   async findById(id: string): Promise<TermEntity | null> {
     const row = await this.prisma.vocabularyTerm.findUnique({ where: { id } });
-    return row ? this.map(row) : null;
+    return row ? mapTermRowToDomain(row) : null;
   }
 
   async findByClassId(classId: string): Promise<TermEntity[]> {
@@ -20,7 +20,7 @@ export class TermRepositoryAdapter extends TermRepositoryPort {
       where: { classId },
       orderBy: { createdAt: "desc" },
     });
-    return rows.map((r) => this.map(r));
+    return rows.map((r) => mapTermRowToDomain(r));
   }
 
   async countByClassId(classId: string): Promise<number> {
@@ -43,7 +43,7 @@ export class TermRepositoryAdapter extends TermRepositoryPort {
         exampleSentence: input.exampleSentence ?? null,
       },
     });
-    return this.map(row);
+    return mapTermRowToDomain(row);
   }
 
   async update(
@@ -51,37 +51,14 @@ export class TermRepositoryAdapter extends TermRepositoryPort {
     input: Partial<Pick<TermEntity, "wordEn" | "wordVi" | "imageUrl" | "audioUrl" | "exampleSentence">>,
   ): Promise<TermEntity> {
     const row = await this.prisma.vocabularyTerm.update({ where: { id }, data: input });
-    return this.map(row);
+    return mapTermRowToDomain(row);
   }
 
-  // Update audio only when term belongs to the given class (ownership check at DB level)
   async updateAudioByIdAndClassId(id: string, classId: string, audioUrl: string): Promise<void> {
     await this.prisma.vocabularyTerm.updateMany({ where: { id, classId }, data: { audioUrl } });
   }
 
   async delete(id: string): Promise<void> {
     await this.prisma.vocabularyTerm.delete({ where: { id } });
-  }
-
-  private map(row: {
-    id: string;
-    classId: string;
-    wordEn: string;
-    wordVi: string;
-    imageUrl: string | null;
-    audioUrl: string | null;
-    exampleSentence: string | null;
-    createdAt: Date;
-  }): TermEntity {
-    return {
-      id: row.id,
-      classId: row.classId,
-      wordEn: row.wordEn,
-      wordVi: row.wordVi,
-      imageUrl: row.imageUrl,
-      audioUrl: row.audioUrl,
-      exampleSentence: row.exampleSentence,
-      createdAt: row.createdAt,
-    };
   }
 }

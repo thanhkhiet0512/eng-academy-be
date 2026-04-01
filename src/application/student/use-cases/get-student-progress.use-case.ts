@@ -1,7 +1,8 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { StudentRepositoryPort } from "../../../domain/student/ports/student.repository.port";
 import { LessonRepositoryPort } from "../../../domain/lesson/ports/lesson.repository.port";
 import { AttemptRepositoryPort } from "../../../domain/lesson/ports/attempt.repository.port";
+import { AppError } from "../../../common/errors/app.error";
 
 // Use case: return the full attempt history and overall progress for a student (public, no auth)
 @Injectable()
@@ -14,7 +15,7 @@ export class GetStudentProgressUseCase {
 
   async execute(studentId: string) {
     const student = await this.students.findById(studentId.trim());
-    if (!student) throw new NotFoundException("Không tìm thấy học sinh");
+    if (!student) throw AppError.notFound("Không tìm thấy học sinh");
 
     const attemptList = await this.attempts.findByStudentId(student.id);
     const lessonIds = [...new Set(attemptList.map((x) => x.lessonId))];

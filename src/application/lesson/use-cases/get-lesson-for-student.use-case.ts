@@ -1,7 +1,8 @@
-import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import type { Exercise } from "../../../domain/lesson/entities/exercise.entity";
 import { LessonRepositoryPort } from "../../../domain/lesson/ports/lesson.repository.port";
 import { StudentRepositoryPort } from "../../../domain/student/ports/student.repository.port";
+import { AppError } from "../../../common/errors/app.error";
 
 @Injectable()
 export class GetLessonForStudentUseCase {
@@ -12,13 +13,13 @@ export class GetLessonForStudentUseCase {
 
   async execute(lessonId: string, studentId: string) {
     const student = await this.students.findById(studentId);
-    if (!student) throw new NotFoundException("Học sinh không tồn tại");
+    if (!student) throw AppError.notFound("Học sinh không tồn tại");
 
     const lesson = await this.lessons.findById(lessonId);
-    if (!lesson) throw new NotFoundException("Bài học không tồn tại");
+    if (!lesson) throw AppError.notFound("Bài học không tồn tại");
 
     if (student.classId !== lesson.classId) {
-      throw new ForbiddenException("Bài học không thuộc lớp của bạn");
+      throw AppError.forbidden("Bài học không thuộc lớp của bạn");
     }
 
     return {

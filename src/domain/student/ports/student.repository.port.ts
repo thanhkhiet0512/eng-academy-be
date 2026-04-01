@@ -1,4 +1,4 @@
-import type { StudentEntity } from "../entities/student.entity";
+import type { StudentEntity, StudentStatus } from "../entities/student.entity";
 
 // Port (abstract class used as NestJS DI token) for student persistence
 export abstract class StudentRepositoryPort {
@@ -16,5 +16,16 @@ export abstract class StudentRepositoryPort {
     parentName?: string | null;
     parentPhone?: string | null;
   }): Promise<StudentEntity>;
+  abstract update(
+    id: string,
+    input: Partial<{
+      name: string;
+      dateOfBirth: Date | null;
+      parentName: string | null;
+      parentPhone: string | null;
+      note: string | null;
+      status: StudentStatus;
+    }>,
+  ): Promise<StudentEntity>;
   abstract delete(id: string): Promise<void>;
 }

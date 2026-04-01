@@ -1,8 +1,9 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import type { Exercise } from "../../../domain/lesson/entities/exercise.entity";
 import { ClassRepositoryPort } from "../../../domain/class/ports/class.repository.port";
 import { LessonRepositoryPort } from "../../../domain/lesson/ports/lesson.repository.port";
 import type { CreateLessonDto, ExerciseDto } from "../dtos/create-lesson.dto";
+import { AppError } from "../../../common/errors/app.error";
 
 @Injectable()
 export class CreateLessonUseCase {
@@ -13,8 +14,8 @@ export class CreateLessonUseCase {
 
   async execute(teacherId: string, dto: CreateLessonDto) {
     const classroom = await this.classes.findById(dto.classId);
-    if (!classroom) throw new NotFoundException("Lớp không tồn tại");
-    if (classroom.teacherId !== teacherId) throw new ForbiddenException("Không có quyền");
+    if (!classroom) throw AppError.notFound("Lớp không tồn tại");
+    if (classroom.teacherId !== teacherId) throw AppError.forbidden("Không có quyền");
 
     dto.exercises.forEach((e, idx) => this.assertBusinessRules(e, idx));
 
@@ -41,29 +42,29 @@ export class CreateLessonUseCase {
     switch (exercise.type) {
       case "multiple_choice":
         if (!exercise.prompt?.trim()) {
-          throw new BadRequestException(`${prefix}: prompt không được để trống`);
+          throw AppError.badRequest(`${prefix}: prompt không được để trống`);
         }
         if (!exercise.choices || exercise.choices.length !== 4) {
-          throw new BadRequestException(`${prefix}: multiple_choice cần đúng 4 choices`);
+          throw AppError.badRequest(`${prefix}: multiple_choice cần đúng 4 choices`);
         }
         if (exercise.choices.some((c) => !c?.trim())) {
-          throw new BadRequestException(`${prefix}: choices không được để trống`);
+          throw AppError.badRequest(`${prefix}: choices không được để trống`);
         }
         if (
           typeof exercise.correctIndex !== "number" ||
           exercise.correctIndex < 0 ||
           exercise.correctIndex > 3
         ) {
-          throw new BadRequestException(`${prefix}: correctIndex phải trong khoảng 0..3`);
+          throw AppError.badRequest(`${prefix}: correctIndex phải trong khoảng 0..3`);
         }
         return;
 
       case "matching":
         if (!exercise.pairs || exercise.pairs.length < 2 || exercise.pairs.length > 8) {
-          throw new BadRequestException(`${prefix}: matching cần 2 đến 8 pairs`);
+          throw AppError.badRequest(`${prefix}: matching cần 2 đến 8 pairs`);
         }
         if (exercise.pairs.some((p) => !p.left?.trim() || !p.right?.trim())) {
-          throw new BadRequestException(`${prefix}: mỗi pair cần left/right hợp lệ`);
+          throw AppError.badRequest(`${prefix}: mỗi pair cần left/right hợp lệ`);
         }
         return;
 
@@ -72,23 +73,23 @@ export class CreateLessonUseCase {
         const answer = exercise.answer?.trim() ?? "";
         const blankCount = sentence.split("___").length - 1;
         if (!sentence || blankCount !== 1) {
-          throw new BadRequestException(`${prefix}: sentence phải chứa đúng 1 placeholder ___`);
+          throw AppError.badRequest(`${prefix}: sentence phải chứa đúng 1 placeholder ___`);
         }
         if (!answer) {
-          throw new BadRequestException(`${prefix}: answer không được để trống`);
+          throw AppError.badRequest(`${prefix}: answer không được để trống`);
         }
         return;
       }
 
       case "word_arrangement":
         if (!exercise.answer?.trim()) {
-          throw new BadRequestException(`${prefix}: answer không được để trống`);
+          throw AppError.badRequest(`${prefix}: answer không được để trống`);
         }
         if (!exercise.words || exercise.words.length < 2) {
-          throw new BadRequestException(`${prefix}: words phải có tối thiểu 2 từ`);
+          throw AppError.badRequest(`${prefix}: words phải có tối thiểu 2 từ`);
         }
         if (exercise.words.some((w) => !w?.trim())) {
-          throw new BadRequestException(`${prefix}: words không được để trống`);
+          throw AppError.badRequest(`${prefix}: words không được để trống`);
         }
         return;
     }

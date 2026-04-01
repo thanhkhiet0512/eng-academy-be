@@ -10,9 +10,9 @@ import {
   Query,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
-import { CurrentUser } from "../../auth/decorators/current-user.decorator";
-import { Public } from "../../auth/decorators/public.decorator";
-import type { RequestUser } from "../../auth/types/request-user.type";
+import { CurrentUser } from "../../infra/auth/decorators/current-user.decorator";
+import { Public } from "../../infra/auth/decorators/public.decorator";
+import type { RequestUser } from "../../infra/auth/types/request-user.type";
 import { CreateLessonDto, UpdateLessonDto } from "../../application/lesson/dtos/create-lesson.dto";
 import { SubmitAttemptDto } from "../../application/lesson/dtos/submit-attempt.dto";
 import { CreateLessonUseCase } from "../../application/lesson/use-cases/create-lesson.use-case";

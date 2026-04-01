@@ -1,9 +1,11 @@
-import { BadRequestException, ForbiddenException, Injectable } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { randomBytes } from "crypto";
 import { ClassRepositoryPort } from "../../../domain/class/ports/class.repository.port";
 import { StudentRepositoryPort } from "../../../domain/student/ports/student.repository.port";
+import { AppError } from "../../../common/errors/app.error";
 
 const SHORT_ID_CHARS = "0123456789abcdefghijklmnopqrstuvwxyz";
+const MAX_AUTO_CODE_ATTEMPTS = 50;
 
 // Raw body shape accepted from the HTTP layer — three supported input modes
 export type AddStudentsBody = {
@@ -30,13 +32,13 @@ export class AddStudentsUseCase {
   async execute(classId: string, teacherId: string, body: AddStudentsBody): Promise<AddStudentsResult> {
     const classroom = await this.classes.findById(classId);
     if (!classroom || classroom.teacherId !== teacherId) {
-      throw new ForbiddenException("Bạn không có quyền với lớp này");
+      throw AppError.forbidden("Bạn không có quyền với lớp này");
     }
 
     // Normalize the three possible input shapes into a uniform list
     const items = this.normalize(body);
     if (items.length === 0) {
-      throw new BadRequestException("Provide name or names (non-empty)");
+      throw AppError.badRequest("Provide name or names (non-empty)");
     }
 
     const added: AddStudentsResult["added"] = [];
@@ -85,7 +87,7 @@ export class AddStudentsUseCase {
   }
 
   private async nextAutoStudentCode(classId: string): Promise<string> {
-    for (let bump = 0; bump < 50; bump++) {
+    for (let bump = 0; bump < MAX_AUTO_CODE_ATTEMPTS; bump++) {
       const n = await this.students.countByClassId(classId);
       const candidate = `HS${String(n + 1 + bump).padStart(4, "0")}`;
       const dup = await this.students.codeExistsInClass(classId, candidate);

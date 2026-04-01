@@ -1,8 +1,8 @@
 import { Body, Controller, Get, Patch, Query } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
-import { CurrentUser } from "../../auth/decorators/current-user.decorator";
-import { Roles } from "../../auth/decorators/roles.decorator";
-import type { RequestUser } from "../../auth/types/request-user.type";
+import { CurrentUser } from "../../infra/auth/decorators/current-user.decorator";
+import { Roles } from "../../infra/auth/decorators/roles.decorator";
+import type { RequestUser } from "../../infra/auth/types/request-user.type";
 import { PatchTeacherPreferencesDto } from "./dtos/patch-teacher-preferences.dto";
 import { GetTeacherClassesUseCase } from "../../application/teacher/use-cases/get-teacher-classes.use-case";
 import { GetTeacherPreferencesUseCase } from "../../application/teacher/use-cases/get-teacher-preferences.use-case";
@@ -23,8 +23,11 @@ export class TeacherController {
 
   @Get("classes")
   @ApiOperation({ summary: "Danh sách lớp của giáo viên đăng nhập" })
-  async getClasses(@CurrentUser() user: RequestUser) {
-    return this.getTeacherClassesUseCase.execute(user.id);
+  async getClasses(
+    @CurrentUser() user: RequestUser,
+    @Query("includeArchived") includeArchived?: string,
+  ) {
+    return this.getTeacherClassesUseCase.execute(user.id, includeArchived === "true");
   }
 
   @Get("preferences")

@@ -9,9 +9,9 @@ import {
   Query,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
-import { CurrentUser } from "../../auth/decorators/current-user.decorator";
-import { Roles } from "../../auth/decorators/roles.decorator";
-import type { RequestUser } from "../../auth/types/request-user.type";
+import { CurrentUser } from "../../infra/auth/decorators/current-user.decorator";
+import { Roles } from "../../infra/auth/decorators/roles.decorator";
+import type { RequestUser } from "../../infra/auth/types/request-user.type";
 import { ListTermsUseCase } from "../../application/term/use-cases/list-terms.use-case";
 import { CreateTermUseCase } from "../../application/term/use-cases/create-term.use-case";
 import { GetTermUseCase } from "../../application/term/use-cases/get-term.use-case";

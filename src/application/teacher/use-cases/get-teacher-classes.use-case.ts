@@ -10,8 +10,11 @@ export class GetTeacherClassesUseCase {
     private readonly students: StudentRepositoryPort,
   ) {}
 
-  async execute(teacherId: string) {
-    const classList = await this.classes.findByTeacherId(teacherId);
+  async execute(teacherId: string, includeArchived = false) {
+    const classList = await this.classes.findByTeacherId(
+      teacherId,
+      includeArchived ? undefined : "ACTIVE",
+    );
 
     // Fetch student counts per class in parallel
     const counts = await Promise.all(
@@ -24,6 +27,7 @@ export class GetTeacherClassesUseCase {
         code: x.code ?? "",
         name: x.name,
         gradeLevel: x.gradeLevel,
+        status: x.status,
         createdAt: x.createdAt,
         studentCount: counts[i] ?? 0,
       })),

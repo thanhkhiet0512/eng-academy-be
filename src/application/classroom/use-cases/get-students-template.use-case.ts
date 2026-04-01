@@ -1,20 +1,21 @@
-import { ForbiddenException, Injectable } from "@nestjs/common";
-import * as XLSX from "xlsx";
+import { Injectable } from "@nestjs/common";
 import { ClassRepositoryPort } from "../../../domain/class/ports/class.repository.port";
 import { StudentRepositoryPort } from "../../../domain/student/ports/student.repository.port";
+import { ExcelServicePort } from "../../../domain/excel/ports/excel.service.port";
+import { AppError } from "../../../common/errors/app.error";
 
-// Use case: generate and return an Excel buffer pre-filled with the class's current student list
 @Injectable()
 export class GetStudentsTemplateUseCase {
   constructor(
     private readonly classes: ClassRepositoryPort,
     private readonly students: StudentRepositoryPort,
+    private readonly excel: ExcelServicePort,
   ) {}
 
   async execute(classId: string, teacherId: string): Promise<Buffer> {
     const classroom = await this.classes.findById(classId);
     if (!classroom || classroom.teacherId !== teacherId) {
-      throw new ForbiddenException("Bạn không có quyền với lớp này");
+      throw AppError.forbidden("Bạn không có quyền với lớp này");
     }
 
     const studentList = await this.students.findByClassId(classId);
@@ -29,13 +30,11 @@ export class GetStudentsTemplateUseCase {
       parentPhone: x.parentPhone ?? "",
     }));
 
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(
-      rows.length ? rows : [{ name: "", dateOfBirth: "", parentName: "", parentPhone: "" }],
-      { header: ["name", "dateOfBirth", "parentName", "parentPhone"] },
-    );
-    ws["!cols"] = [{ wch: 28 }, { wch: 14 }, { wch: 24 }, { wch: 16 }];
-    XLSX.utils.book_append_sheet(wb, ws, "Students");
-    return XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
+    return this.excel.build(rows, [
+      { header: "Họ tên", key: "name", width: 28 },
+      { header: "Ngày sinh", key: "dateOfBirth", width: 14 },
+      { header: "Phụ huynh", key: "parentName", width: 24 },
+      { header: "SĐT", key: "parentPhone", width: 16 },
+    ]);
   }
 }

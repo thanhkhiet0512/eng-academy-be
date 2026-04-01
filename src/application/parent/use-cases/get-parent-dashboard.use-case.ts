@@ -1,10 +1,11 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { StudentRepositoryPort } from "../../../domain/student/ports/student.repository.port";
 import { ClassRepositoryPort } from "../../../domain/class/ports/class.repository.port";
 import { LessonRepositoryPort } from "../../../domain/lesson/ports/lesson.repository.port";
 import { AttemptRepositoryPort } from "../../../domain/lesson/ports/attempt.repository.port";
 import { TermRepositoryPort } from "../../../domain/term/ports/term.repository.port";
 import { UserRepositoryPort } from "../../../domain/auth/ports/user.repository.port";
+import { AppError } from "../../../common/errors/app.error";
 
 // Use case: return the parent dashboard for a given student (public, no auth)
 @Injectable()
@@ -20,7 +21,7 @@ export class GetParentDashboardUseCase {
 
   async execute(studentId: string) {
     const student = await this.students.findById(studentId.trim());
-    if (!student) throw new NotFoundException("Không tìm thấy học sinh");
+    if (!student) throw AppError.notFound("Không tìm thấy học sinh");
 
     const [classroom, lessonList, attemptList, vocabCount] = await Promise.all([
       this.classes.findById(student.classId),

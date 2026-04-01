@@ -1,9 +1,10 @@
-import { ForbiddenException, Injectable } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { ClassRepositoryPort } from "../../../domain/class/ports/class.repository.port";
 import { StudentRepositoryPort } from "../../../domain/student/ports/student.repository.port";
 import { LessonRepositoryPort } from "../../../domain/lesson/ports/lesson.repository.port";
 import { AttemptRepositoryPort } from "../../../domain/lesson/ports/attempt.repository.port";
 import { TermRepositoryPort } from "../../../domain/term/ports/term.repository.port";
+import { AppError } from "../../../common/errors/app.error";
 
 export type ClassDashboardResult = {
   classId: string;
@@ -34,7 +35,7 @@ export class GetClassDashboardUseCase {
   async execute(classId: string, teacherId: string): Promise<ClassDashboardResult> {
     const classroom = await this.classes.findById(classId);
     if (!classroom || classroom.teacherId !== teacherId) {
-      throw new ForbiddenException("Bạn không có quyền với lớp này");
+      throw AppError.forbidden("Bạn không có quyền với lớp này");
     }
 
     const [studentList, lessonList, termsCount, attemptList] = await Promise.all([

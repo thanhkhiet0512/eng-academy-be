@@ -5,7 +5,14 @@ import { PrismaModule } from "./prisma/prisma.module";
 import { AuthModule } from "./presentation/auth/auth.module";
 import { LessonModule } from "./presentation/lesson/lesson.module";
 import { TeacherModule } from "./presentation/teacher/teacher.module";
-import { PortalModule } from "./presentation/portal/portal.module";
+import { ClassroomModule } from "./presentation/classroom/classroom.module";
+import { TermModule } from "./presentation/term/term.module";
+import { StudentModule } from "./presentation/student/student.module";
+import { ParentModule } from "./presentation/parent/parent.module";
+import { ImportModule } from "./presentation/import/import.module";
+import { UploadModule } from "./presentation/upload/upload.module";
+import { AssignmentModule } from "./presentation/assignment/assignment.module";
+import { AnalyticsModule } from "./presentation/analytics/analytics.module";
 
 @Module({
   imports: [
@@ -16,7 +23,14 @@ import { PortalModule } from "./presentation/portal/portal.module";
     AuthModule,
     LessonModule,
     TeacherModule,
-    PortalModule,
+    ClassroomModule,
+    TermModule,
+    StudentModule,
+    ParentModule,
+    ImportModule,
+    UploadModule,
+    AssignmentModule,
+    AnalyticsModule,
   ],
   controllers: [AppController],
 })

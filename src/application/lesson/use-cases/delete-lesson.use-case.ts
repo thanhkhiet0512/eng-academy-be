@@ -1,6 +1,7 @@
-import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { ClassRepositoryPort } from "../../../domain/class/ports/class.repository.port";
 import { LessonRepositoryPort } from "../../../domain/lesson/ports/lesson.repository.port";
+import { AppError } from "../../../common/errors/app.error";
 
 @Injectable()
 export class DeleteLessonUseCase {
@@ -11,11 +12,11 @@ export class DeleteLessonUseCase {
 
   async execute(teacherId: string, lessonId: string) {
     const lesson = await this.lessons.findById(lessonId);
-    if (!lesson) throw new NotFoundException("Bài học không tồn tại");
+    if (!lesson) throw AppError.notFound("Bài học không tồn tại");
 
     const classroom = await this.classes.findById(lesson.classId);
     if (!classroom || classroom.teacherId !== teacherId) {
-      throw new ForbiddenException("Không có quyền");
+      throw AppError.forbidden("Không có quyền");
     }
 
     await this.lessons.delete(lessonId);

@@ -1,3 +1,5 @@
+export type ClassStatus = "ACTIVE" | "ARCHIVED";
+
 // Domain entity representing a classroom
 export type ClassEntity = {
   id: string;
@@ -5,5 +7,6 @@ export type ClassEntity = {
   gradeLevel: string;
   code: string | null;
   teacherId: string;
+  status: ClassStatus;
   createdAt: Date;
 };

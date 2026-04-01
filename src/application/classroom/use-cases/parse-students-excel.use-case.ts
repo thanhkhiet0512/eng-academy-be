@@ -1,6 +1,7 @@
-import { BadRequestException, ForbiddenException, Injectable } from "@nestjs/common";
-import * as XLSX from "xlsx";
+import { Injectable } from "@nestjs/common";
 import { ClassRepositoryPort } from "../../../domain/class/ports/class.repository.port";
+import { ExcelServicePort } from "../../../domain/excel/ports/excel.service.port";
+import { AppError } from "../../../common/errors/app.error";
 
 export type ParsedStudentRow = {
   name: string;
@@ -16,10 +17,12 @@ export type ParseStudentsExcelResult = {
   errorRows: number;
 };
 
-// Use case: parse an uploaded Excel file and return a preview of student rows with validation errors
 @Injectable()
 export class ParseStudentsExcelUseCase {
-  constructor(private readonly classes: ClassRepositoryPort) {}
+  constructor(
+    private readonly classes: ClassRepositoryPort,
+    private readonly excel: ExcelServicePort,
+  ) {}
 
   async execute(
     classId: string,
@@ -28,20 +31,18 @@ export class ParseStudentsExcelUseCase {
   ): Promise<ParseStudentsExcelResult> {
     const classroom = await this.classes.findById(classId);
     if (!classroom || classroom.teacherId !== teacherId) {
-      throw new ForbiddenException("Bạn không có quyền với lớp này");
+      throw AppError.forbidden("Bạn không có quyền với lớp này");
     }
 
     const ext = file.originalname.split(".").pop()?.toLowerCase();
     if (!ext || !["xlsx", "xls", "csv"].includes(ext)) {
-      throw new BadRequestException("Chỉ hỗ trợ .xlsx, .xls, .csv");
+      throw AppError.badRequest("Chỉ hỗ trợ .xlsx, .xls, .csv");
     }
 
-    const workbook = XLSX.read(file.buffer, { type: "buffer" });
-    const sheet = workbook.Sheets[workbook.SheetNames[0] ?? ""];
-    if (!sheet) throw new BadRequestException("File trống hoặc không có dữ liệu");
-
-    const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
-    if (rawRows.length === 0) throw new BadRequestException("File trống hoặc không có dữ liệu");
+    const rawRows = this.excel.parse(file.buffer);
+    if (rawRows.length === 0) {
+      throw AppError.badRequest("File trống hoặc không có dữ liệu");
+    }
 
     const headerMap = this.buildHeaderMap(rawRows[0]!);
     const rows: ParsedStudentRow[] = rawRows.map((rawRow, idx) => {
@@ -95,15 +96,30 @@ export class ParseStudentsExcelUseCase {
     const s = raw.trim();
     const dmy = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
     if (dmy) return `${dmy[3]}-${dmy[2]!.padStart(2, "0")}-${dmy[1]!.padStart(2, "0")}`;
+
     const ymd = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
     if (ymd) return `${ymd[1]}-${ymd[2]!.padStart(2, "0")}-${ymd[3]!.padStart(2, "0")}`;
+
     if (/^\d+$/.test(s)) {
       const serial = parseInt(s, 10);
       if (serial > 1000 && serial < 100000) {
-        const d = XLSX.SSF.parse_date_code(serial);
-        if (d) return `${d.y}-${String(d.m).padStart(2, "0")}-${String(d.d).padStart(2, "0")}`;
+        const d = this.excelSerialToDate(serial);
+        if (d) return d;
       }
     }
+
     return null;
+  }
+
+  private excelSerialToDate(serial: number): string | null {
+    const base = Date.UTC(1899, 11, 30);
+    const ms = base + Math.floor(serial) * 24 * 60 * 60 * 1000;
+    const date = new Date(ms);
+    if (Number.isNaN(date.getTime())) return null;
+
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(date.getUTCDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
   }
 }

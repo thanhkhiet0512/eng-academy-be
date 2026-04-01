@@ -1,7 +1,8 @@
-import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { ClassRepositoryPort } from "../../../domain/class/ports/class.repository.port";
 import { TermRepositoryPort } from "../../../domain/term/ports/term.repository.port";
 import type { TermEntity } from "../../../domain/term/entities/term.entity";
+import { AppError } from "../../../common/errors/app.error";
 
 // Use case: teacher retrieves a single term and verifies they own its class
 @Injectable()
@@ -13,11 +14,11 @@ export class GetTermUseCase {
 
   async execute(termId: string, teacherId: string): Promise<TermEntity> {
     const term = await this.terms.findById(termId);
-    if (!term) throw new NotFoundException("Term not found");
+    if (!term) throw AppError.notFound("Term not found");
 
     const classroom = await this.classes.findById(term.classId);
     if (!classroom || classroom.teacherId !== teacherId) {
-      throw new ForbiddenException("Bạn không có quyền với lớp này");
+      throw AppError.forbidden("Bạn không có quyền với lớp này");
     }
 
     return term;
