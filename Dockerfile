@@ -5,6 +5,9 @@ FROM node:22-alpine AS deps
 
 WORKDIR /app
 
+# Force development so devDependencies (nest, typescript, etc.) are installed
+ENV NODE_ENV=development
+
 COPY package*.json ./
 COPY prisma ./prisma/
 COPY prisma.config.ts ./
@@ -18,6 +21,8 @@ RUN npm ci
 FROM node:22-alpine AS builder
 
 WORKDIR /app
+
+ENV NODE_ENV=development
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/package*.json ./
