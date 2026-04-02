@@ -1,0 +1,16 @@
+name: Deploy Backend
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Coolify Deploy
+        run: |
+          curl --fail -X GET \
+            "https://coolify.teachsmart.id.vn/api/v1/deploy?uuid=d7v1qg85rtkx60it94fvapxz&force=false" \
+            -H "Authorization: Bearer ${{ secrets.COOLIFY_TOKEN }}"

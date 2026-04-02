@@ -39,6 +39,7 @@ export class AuthController {
     this.setSessionCookie(res, result.accessToken);
     return {
       ok: true,
+      accessToken: result.accessToken,
       teacherId: result.user.id,
       email: result.user.email,
       name: result.user.name,
@@ -54,6 +55,7 @@ export class AuthController {
     this.setSessionCookie(res, result.accessToken);
     return {
       ok: true,
+      accessToken: result.accessToken,
       teacherId: result.user.id,
       email: result.user.email,
       name: result.user.name,
