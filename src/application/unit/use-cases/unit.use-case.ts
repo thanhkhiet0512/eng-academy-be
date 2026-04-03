@@ -16,7 +16,7 @@ export class UnitUseCase {
   async createUnit(teacherId: string, title: string) {
     if (!title?.trim()) throw AppError.badRequest("title là bắt buộc");
     const unit = await this.units.create({ teacherId, title: title.trim() });
-    return { unitId: unit.id };
+    return { unit };
   }
 
   async updateUnit(teacherId: string, unitId: string, title: string) {
@@ -65,7 +65,7 @@ export class UnitUseCase {
       audioUrl: input.audioUrl ?? null,
       exampleSentence: input.exampleSentence ?? null,
     });
-    return { termId: term.id };
+    return { term };
   }
 
   async updateTerm(
