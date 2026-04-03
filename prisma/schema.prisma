@@ -24,7 +24,10 @@ model User {
   createdAt              DateTime @default(now()) @map("created_at")
   updatedAt              DateTime @updatedAt @map("updated_at")
 
-  classes Class[]
+  classes  Class[]
+  units    VocabularyUnit[]
+  lessons  Lesson[]
+  exams    Exam[]
 
   @@map("users")
 }
@@ -45,13 +48,14 @@ model Class {
   status         ClassStatus @default(ACTIVE)
   createdAt      DateTime    @default(now()) @map("created_at")
 
-  teacher     User             @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  students    Student[]
-  lessons     Lesson[]
-  terms       VocabularyTerm[]
-  attempts    Attempt[]
-  attendance  Attendance[]
-  assignments Assignment[]
+  teacher      User          @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  students     Student[]
+  attempts     Attempt[]
+  examAttempts ExamAttempt[]
+  attendance   Attendance[]
+  classUnits   ClassUnit[]
+  classLessons ClassLesson[]
+  classExams   ClassExam[]
 
   @@index([teacherId])
   @@map("classes")
@@ -70,21 +74,38 @@ model Student {
   dateOfBirth DateTime?     @map("date_of_birth")
   parentName  String?       @map("parent_name")
   parentPhone String?       @map("parent_phone")
-  note        String? // Ghi chú riêng của GV về HS
+  note        String?
   status      StudentStatus @default(ACTIVE)
   createdAt   DateTime      @default(now()) @map("created_at")
 
-  class      Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
-  attempts   Attempt[]
-  attendance Attendance[]
+  class        Class         @relation(fields: [classId], references: [id], onDelete: Cascade)
+  attempts     Attempt[]
+  examAttempts ExamAttempt[]
+  attendance   Attendance[]
 
   @@index([classId])
   @@map("students")
 }
 
+// ─── Vocabulary ───────────────────────────────────────────────────────────────
+
+model VocabularyUnit {
+  id        String   @id @default(uuid())
+  teacherId String   @map("teacher_id")
+  title     String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  teacher    User            @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  terms      VocabularyTerm[]
+  classUnits ClassUnit[]
+
+  @@index([teacherId])
+  @@map("vocabulary_units")
+}
+
 model VocabularyTerm {
   id              String   @id @default(uuid())
-  classId         String   @map("class_id")
+  unitId          String   @map("unit_id")
   wordEn          String   @map("word_en")
   wordVi          String   @map("word_vi")
   imageUrl        String?  @map("image_url")
@@ -92,15 +113,32 @@ model VocabularyTerm {
   exampleSentence String?  @map("example_sentence")
   createdAt       DateTime @default(now()) @map("created_at")
 
-  class Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+  unit VocabularyUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
 
-  @@index([classId])
-  @@map("terms")
+  @@index([unitId])
+  @@map("vocabulary_terms")
 }
+
+// Junction: class ↔ vocabulary unit
+model ClassUnit {
+  id        String   @id @default(uuid())
+  classId   String   @map("class_id")
+  unitId    String   @map("unit_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  class Class          @relation(fields: [classId], references: [id], onDelete: Cascade)
+  unit  VocabularyUnit @relation(fields: [unitId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, unitId])
+  @@index([classId])
+  @@map("class_units")
+}
+
+// ─── Lessons (bài tập) ────────────────────────────────────────────────────────
 
 model Lesson {
   id            String   @id @default(uuid())
-  classId       String   @map("class_id")
+  teacherId     String   @map("teacher_id")
   unitTitle     String   @map("unit_title")
   topic         String
   coverImageUrl String?  @map("cover_image_url")
@@ -108,12 +146,28 @@ model Lesson {
   questions     Json
   createdAt     DateTime @default(now()) @map("created_at")
 
-  class       Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
-  attempts    Attempt[]
-  assignments Assignment[]
+  teacher      User          @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  attempts     Attempt[]
+  classLessons ClassLesson[]
+  examLessons  ExamLesson[]
 
-  @@index([classId])
+  @@index([teacherId])
   @@map("lessons")
+}
+
+// Junction: class ↔ lesson
+model ClassLesson {
+  id        String   @id @default(uuid())
+  classId   String   @map("class_id")
+  lessonId  String   @map("lesson_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  class  Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, lessonId])
+  @@index([classId])
+  @@map("class_lessons")
 }
 
 model Attempt {
@@ -135,6 +189,88 @@ model Attempt {
   @@map("attempts")
 }
 
+// ─── Exams (đề thi) ───────────────────────────────────────────────────────────
+
+model Exam {
+  id              String   @id @default(uuid())
+  teacherId       String   @map("teacher_id")
+  title           String
+  description     String?
+  durationMinutes Int      @map("duration_minutes")
+  // questions: array of { ...exercise, points: Decimal }
+  // totalPoints validated <= 10 at application layer
+  questions       Json
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  teacher     User          @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  examLessons ExamLesson[]
+  classExams  ClassExam[]
+  attempts    ExamAttempt[]
+
+  @@index([teacherId])
+  @@map("exams")
+}
+
+// Lessons embedded/referenced in an exam
+model ExamLesson {
+  id       String @id @default(uuid())
+  examId   String @map("exam_id")
+  lessonId String @map("lesson_id")
+
+  exam   Exam   @relation(fields: [examId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([examId, lessonId])
+  @@map("exam_lessons")
+}
+
+enum ExamStatus {
+  ACTIVE
+  CLOSED
+}
+
+// Junction: class ↔ exam (with schedule)
+model ClassExam {
+  id          String     @id @default(uuid())
+  classId     String     @map("class_id")
+  examId      String     @map("exam_id")
+  scheduledAt DateTime?  @map("scheduled_at")
+  dueDate     DateTime?  @map("due_date")
+  maxAttempts Int        @default(1) @map("max_attempts")
+  status      ExamStatus @default(ACTIVE)
+  createdAt   DateTime   @default(now()) @map("created_at")
+
+  class Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+  exam  Exam  @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, examId])
+  @@index([classId])
+  @@map("class_exams")
+}
+
+model ExamAttempt {
+  id          String   @id @default(uuid())
+  studentId   String   @map("student_id")
+  classId     String   @map("class_id")
+  examId      String   @map("exam_id")
+  // score out of 10, stored as integer * 100 (e.g. 8.5 → 850)
+  scoreX100   Int      @map("score_x100")
+  totalX100   Int      @map("total_x100")
+  answers     Json
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  exam    Exam    @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([classId])
+  @@index([examId])
+  @@map("exam_attempts")
+}
+
+// ─── Attendance ───────────────────────────────────────────────────────────────
+
 model Attendance {
   id        String   @id @default(uuid())
   classId   String   @map("class_id")
@@ -148,28 +284,4 @@ model Attendance {
 
   @@unique([classId, date, studentId], name: "attendance_class_date_student")
   @@map("attendance")
-}
-
-enum AssignmentStatus {
-  ACTIVE
-  CLOSED
-}
-
-model Assignment {
-  id          String           @id @default(uuid())
-  classId     String           @map("class_id")
-  lessonId    String           @map("lesson_id")
-  title       String
-  description String?
-  dueDate     DateTime         @map("due_date")
-  maxAttempts Int              @default(1) @map("max_attempts")
-  status      AssignmentStatus @default(ACTIVE)
-  createdAt   DateTime         @default(now()) @map("created_at")
-
-  class  Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
-  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-
-  @@index([classId])
-  @@index([lessonId])
-  @@map("assignments")
 }

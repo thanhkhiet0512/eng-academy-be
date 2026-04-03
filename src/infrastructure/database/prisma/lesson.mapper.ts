@@ -4,7 +4,7 @@ import type { Lesson } from "../../../domain/lesson/entities/lesson.entity";
 
 export type LessonRow = {
   id: string;
-  classId: string;
+  teacherId: string;
   unitTitle: string;
   topic: string;
   coverImageUrl: string | null;
@@ -33,7 +33,7 @@ export function mapLessonRowToDomain(row: LessonRow): Lesson {
 
   return {
     id: row.id,
-    classId: row.classId,
+    teacherId: row.teacherId,
     unitTitle: row.unitTitle,
     topic: row.topic,
     coverImageUrl: row.coverImageUrl,

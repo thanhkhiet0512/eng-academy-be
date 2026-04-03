@@ -17,16 +17,25 @@ export class LessonRepositoryAdapter extends LessonRepositoryPort {
     return row ? mapLessonRowToDomain(row) : null;
   }
 
-  async findByClassId(classId: string): Promise<Lesson[]> {
+  async findByTeacherId(teacherId: string): Promise<Lesson[]> {
     const rows = await this.prisma.lesson.findMany({
-      where: { classId },
+      where: { teacherId },
       orderBy: { createdAt: "desc" },
     });
     return rows.map((r) => mapLessonRowToDomain(r));
   }
 
+  async findByClassId(classId: string): Promise<Lesson[]> {
+    const classLessons = await this.prisma.classLesson.findMany({
+      where: { classId },
+      include: { lesson: true },
+      orderBy: { createdAt: "desc" },
+    });
+    return classLessons.map((cl) => mapLessonRowToDomain(cl.lesson));
+  }
+
   async create(input: {
-    classId: string;
+    teacherId: string;
     unitTitle: string;
     topic: string;
     coverImageUrl?: string | null;
@@ -35,7 +44,7 @@ export class LessonRepositoryAdapter extends LessonRepositoryPort {
   }): Promise<Lesson> {
     const row = await this.prisma.lesson.create({
       data: {
-        classId: input.classId,
+        teacherId: input.teacherId,
         unitTitle: input.unitTitle,
         topic: input.topic,
         coverImageUrl: input.coverImageUrl,
@@ -56,5 +65,29 @@ export class LessonRepositoryAdapter extends LessonRepositoryPort {
 
   async delete(id: string): Promise<void> {
     await this.prisma.lesson.delete({ where: { id } });
+  }
+
+  async assignToClass(classId: string, lessonId: string): Promise<void> {
+    await this.prisma.classLesson.upsert({
+      where: { classId_lessonId: { classId, lessonId } },
+      create: { classId, lessonId },
+      update: {},
+    });
+  }
+
+  async removeFromClass(classId: string, lessonId: string): Promise<void> {
+    await this.prisma.classLesson.deleteMany({ where: { classId, lessonId } });
+  }
+
+  async isAssignedToClass(classId: string, lessonId: string): Promise<boolean> {
+    const row = await this.prisma.classLesson.findUnique({
+      where: { classId_lessonId: { classId, lessonId } },
+    });
+    return row !== null;
+  }
+
+  async findAssignedClassIds(lessonId: string): Promise<string[]> {
+    const rows = await this.prisma.classLesson.findMany({ where: { lessonId } });
+    return rows.map((r) => r.classId);
   }
 }

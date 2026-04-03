@@ -18,9 +18,8 @@ export class GetLessonForStudentUseCase {
     const lesson = await this.lessons.findById(lessonId);
     if (!lesson) throw AppError.notFound("Bài học không tồn tại");
 
-    if (student.classId !== lesson.classId) {
-      throw AppError.forbidden("Bài học không thuộc lớp của bạn");
-    }
+    const assigned = await this.lessons.isAssignedToClass(student.classId, lesson.id);
+    if (!assigned) throw AppError.forbidden("Bài học không thuộc lớp của bạn");
 
     return {
       id: lesson.id,

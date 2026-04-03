@@ -3,7 +3,7 @@ import { ClassRepositoryPort } from "../../../domain/class/ports/class.repositor
 import { StudentRepositoryPort } from "../../../domain/student/ports/student.repository.port";
 import { LessonRepositoryPort } from "../../../domain/lesson/ports/lesson.repository.port";
 import { AttemptRepositoryPort } from "../../../domain/lesson/ports/attempt.repository.port";
-import { TermRepositoryPort } from "../../../domain/term/ports/term.repository.port";
+import { UnitRepositoryPort } from "../../../domain/unit/ports/unit.repository.port";
 import { AppError } from "../../../common/errors/app.error";
 
 export type ClassDashboardResult = {
@@ -29,7 +29,7 @@ export class GetClassDashboardUseCase {
     private readonly students: StudentRepositoryPort,
     private readonly lessons: LessonRepositoryPort,
     private readonly attempts: AttemptRepositoryPort,
-    private readonly terms: TermRepositoryPort,
+    private readonly units: UnitRepositoryPort,
   ) {}
 
   async execute(classId: string, teacherId: string): Promise<ClassDashboardResult> {
@@ -41,7 +41,7 @@ export class GetClassDashboardUseCase {
     const [studentList, lessonList, termsCount, attemptList] = await Promise.all([
       this.students.findByClassId(classId),
       this.lessons.findByClassId(classId),
-      this.terms.countByClassId(classId),
+      this.units.countTermsByClassId(classId),
       this.attempts.findByClassId(classId),
     ]);
 

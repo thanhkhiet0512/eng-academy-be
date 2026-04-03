@@ -44,9 +44,10 @@ export class LessonController {
 
   @Get()
   @ApiBearerAuth()
-  @ApiOperation({ summary: "Teacher lấy danh sách bài học" })
-  list(@CurrentUser() user: RequestUser, @Query("classId") classId: string) {
-    return this.getLessons.execute(user.id, classId);
+  @ApiOperation({ summary: "Teacher lấy danh sách bài học (library hoặc theo lớp)" })
+  list(@CurrentUser() user: RequestUser, @Query("classId") classId?: string) {
+    if (classId) return this.getLessons.executeByClass(user.id, classId);
+    return this.getLessons.execute(user.id);
   }
 
   @Get(":id")
@@ -72,6 +73,29 @@ export class LessonController {
   @ApiOperation({ summary: "Teacher xoá bài học" })
   remove(@CurrentUser() user: RequestUser, @Param("id") id: string) {
     return this.deleteLesson.execute(user.id, id);
+  }
+
+  @Post(":id/classes/:classId")
+  @HttpCode(201)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Gán bài học vào lớp" })
+  assignToClass(
+    @CurrentUser() user: RequestUser,
+    @Param("id") lessonId: string,
+    @Param("classId") classId: string,
+  ) {
+    return this.getLessons.assignToClass(user.id, classId, lessonId);
+  }
+
+  @Delete(":id/classes/:classId")
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Gỡ bài học khỏi lớp" })
+  removeFromClass(
+    @CurrentUser() user: RequestUser,
+    @Param("id") lessonId: string,
+    @Param("classId") classId: string,
+  ) {
+    return this.getLessons.removeFromClass(user.id, classId, lessonId);
   }
 
   @Public()

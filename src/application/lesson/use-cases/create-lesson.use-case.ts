@@ -1,22 +1,14 @@
 import { Injectable } from "@nestjs/common";
 import type { Exercise } from "../../../domain/lesson/entities/exercise.entity";
-import { ClassRepositoryPort } from "../../../domain/class/ports/class.repository.port";
 import { LessonRepositoryPort } from "../../../domain/lesson/ports/lesson.repository.port";
 import type { CreateLessonDto, ExerciseDto } from "../dtos/create-lesson.dto";
 import { AppError } from "../../../common/errors/app.error";
 
 @Injectable()
 export class CreateLessonUseCase {
-  constructor(
-    private readonly lessons: LessonRepositoryPort,
-    private readonly classes: ClassRepositoryPort,
-  ) {}
+  constructor(private readonly lessons: LessonRepositoryPort) {}
 
   async execute(teacherId: string, dto: CreateLessonDto) {
-    const classroom = await this.classes.findById(dto.classId);
-    if (!classroom) throw AppError.notFound("Lớp không tồn tại");
-    if (classroom.teacherId !== teacherId) throw AppError.forbidden("Không có quyền");
-
     dto.exercises.forEach((e, idx) => this.assertBusinessRules(e, idx));
 
     const exercises: Exercise[] = dto.exercises.map((e, idx) => ({
@@ -25,7 +17,7 @@ export class CreateLessonUseCase {
     })) as Exercise[];
 
     const lesson = await this.lessons.create({
-      classId: dto.classId,
+      teacherId,
       unitTitle: dto.unitTitle,
       topic: dto.topic,
       coverImageUrl: dto.coverImageUrl ?? null,

@@ -3,7 +3,7 @@ import { StudentRepositoryPort } from "../../../domain/student/ports/student.rep
 import { ClassRepositoryPort } from "../../../domain/class/ports/class.repository.port";
 import { LessonRepositoryPort } from "../../../domain/lesson/ports/lesson.repository.port";
 import { AttemptRepositoryPort } from "../../../domain/lesson/ports/attempt.repository.port";
-import { TermRepositoryPort } from "../../../domain/term/ports/term.repository.port";
+import { UnitRepositoryPort } from "../../../domain/unit/ports/unit.repository.port";
 import { UserRepositoryPort } from "../../../domain/auth/ports/user.repository.port";
 import { AppError } from "../../../common/errors/app.error";
 
@@ -15,7 +15,7 @@ export class GetParentDashboardUseCase {
     private readonly classes: ClassRepositoryPort,
     private readonly lessons: LessonRepositoryPort,
     private readonly attempts: AttemptRepositoryPort,
-    private readonly terms: TermRepositoryPort,
+    private readonly units: UnitRepositoryPort,
     private readonly users: UserRepositoryPort,
   ) {}
 
@@ -27,7 +27,7 @@ export class GetParentDashboardUseCase {
       this.classes.findById(student.classId),
       this.lessons.findByClassId(student.classId),
       this.attempts.findByStudentId(student.id),
-      this.terms.countByClassId(student.classId),
+      this.units.countTermsByClassId(student.classId),
     ]);
 
     // Resolve teacher name from the class's teacherId

@@ -94,10 +94,6 @@ export class ExerciseDto {
 export class CreateLessonDto {
   @ApiProperty()
   @IsString()
-  classId!: string;
-
-  @ApiProperty()
-  @IsString()
   unitTitle!: string;
 
   @ApiProperty()

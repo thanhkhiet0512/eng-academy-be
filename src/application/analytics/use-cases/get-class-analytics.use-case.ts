@@ -3,7 +3,6 @@ import { ClassRepositoryPort } from "../../../domain/class/ports/class.repositor
 import { StudentRepositoryPort } from "../../../domain/student/ports/student.repository.port";
 import { AttemptRepositoryPort } from "../../../domain/lesson/ports/attempt.repository.port";
 import { AttendanceRepositoryPort } from "../../../domain/attendance/ports/attendance.repository.port";
-import { AssignmentRepositoryPort } from "../../../domain/assignment/ports/assignment.repository.port";
 import { AppError } from "../../../common/errors/app.error";
 
 @Injectable()
@@ -13,7 +12,6 @@ export class GetClassAnalyticsUseCase {
     private readonly students: StudentRepositoryPort,
     private readonly attempts: AttemptRepositoryPort,
     private readonly attendance: AttendanceRepositoryPort,
-    private readonly assignments: AssignmentRepositoryPort,
   ) {}
 
   async execute(classId: string, teacherId: string) {
@@ -22,10 +20,9 @@ export class GetClassAnalyticsUseCase {
       throw AppError.forbidden("Bạn không có quyền với lớp này");
     }
 
-    const [studentList, attemptList, assignmentList] = await Promise.all([
+    const [studentList, attemptList] = await Promise.all([
       this.students.findByClassId(classId),
       this.attempts.findByClassId(classId),
-      this.assignments.findByClassId(classId),
     ]);
 
     const now = new Date();
@@ -105,9 +102,8 @@ export class GetClassAnalyticsUseCase {
       dailyAvg.push({ date: dayStr, avg: dayAvg, count: dayAttempts.length });
     }
 
-    // Pending assignments
-    const pendingAssignments = assignmentList.filter((a) => a.status === "ACTIVE" && a.dueDate >= now).length;
-    const overdueAssignments = assignmentList.filter((a) => a.status === "ACTIVE" && a.dueDate < now).length;
+    const pendingAssignments = 0;
+    const overdueAssignments = 0;
 
     return {
       className: classroom.name,

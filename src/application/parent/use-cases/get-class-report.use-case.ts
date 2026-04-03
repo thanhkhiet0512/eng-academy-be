@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { StudentRepositoryPort } from "../../../domain/student/ports/student.repository.port";
 import { AttemptRepositoryPort } from "../../../domain/lesson/ports/attempt.repository.port";
-import { TermRepositoryPort } from "../../../domain/term/ports/term.repository.port";
+import { UnitRepositoryPort } from "../../../domain/unit/ports/unit.repository.port";
 
 // Use case: legacy class-level report for parents (public, no auth)
 @Injectable()
@@ -9,14 +9,14 @@ export class GetClassReportUseCase {
   constructor(
     private readonly students: StudentRepositoryPort,
     private readonly attempts: AttemptRepositoryPort,
-    private readonly terms: TermRepositoryPort,
+    private readonly units: UnitRepositoryPort,
   ) {}
 
   async execute(classId: string) {
     const cid = classId.trim();
     const [studentCount, vocabCount, attemptList] = await Promise.all([
       this.students.countByClassId(cid),
-      this.terms.countByClassId(cid),
+      this.units.countTermsByClassId(cid),
       this.attempts.findByClassId(cid),
     ]);
 
